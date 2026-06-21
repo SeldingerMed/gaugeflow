@@ -1,0 +1,37 @@
+{
+  "idea_id": "coin-mms-vendorgauge",
+  "run_id": "run-mms-vendorgauge-baseline",
+  "method_label": "baseline_mms_ed_es_prediction_no_consistency",
+  "model_label": "baseline_mms",
+  "output_dir": "experiments_v2/acdc_mms_vendor_gauge/runs/baseline",
+
+  "task": "prediction",
+  "task_metric": "ed_es_mae",
+  "cases_jsonl": "experiments_v2/acdc_mms_vendor_gauge/data/cases.jsonl",
+  "local_root": "experiments_v2/acdc_mms_vendor_gauge/data/frames",
+  "baseline_metrics_json": "experiments_v2/acdc_mms_vendor_gauge/data/persistence_metrics.json",
+  "cluster_key": "patient_id",
+
+  "gauge_source": "real_pairs",
+  "gauge_pairs_jsonl": "experiments_v2/acdc_mms_vendor_gauge/data/gauge_pairs.jsonl",
+  "gauge_level_key": "vendor",
+  "gauge_shuffle": false,
+
+  "gaugeflow_enabled": false,
+  "gaugeflow_state_consistency_loss_weight": 0.0,
+  "gaugeflow_commutator_loss_weight": 0.0,
+  "gaugeflow_transformed_target_loss_weight": 0.0,
+  "gaugeflow_state_variance_loss_weight": 0.0,
+
+  "vendor_separability_probe": true,
+  "probe_steps": 250,
+  "probe_learning_rate": 0.05,
+
+  "base_channels": 16,
+  "image_size": 128,
+  "batch_size": 16,
+  "epochs": 24,
+  "learning_rate": 0.001,
+  "weight_decay": 1e-6,
+  "seed": 123
+}

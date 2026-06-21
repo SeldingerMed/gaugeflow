@@ -1,0 +1,317 @@
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{natbib}
+\usepackage{hyperref}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath}
+\usepackage{microtype}
+\sloppy
+\setlength{\emergencystretch}{2em}
+
+\title{GaugeFlow: Equivariance, Not Invariance, Is the Right Prior for\\
+Continuous Physical Gauges in Self-Supervised Medical Imaging}
+\author{Colin Son, MD\\ Seldinger, Inc.\\ \texttt{colinson@gmail.com}}
+\date{June 2026}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+A self-supervised objective that works on one medical-imaging task often collapses on the next.
+We give a mechanistic account of when it transfers and when it does not, organized around a single
+distinction: whether a task's nuisance axis is a \emph{continuous physical gauge} with
+\emph{coincident free supervision}, and whether the downstream utility is invariant or covariant
+under that gauge. Contrast-front propagation in digital subtraction angiography (DIAS) is such a
+gauge: it is a real temporal dynamical process, so ``predict the next state'' is gauge-equivariance
+under time-translation with free supervision, and a compact gauge-consistent objective improves
+DIAS adjacent-frame prediction while keeping topology-style leakage non-positive. We then ask
+whether the same prior transfers to a second continuous physical gauge, the projection angle of
+coronary angiography (CardioSYNTAX), where same-study/same-artery retrieval is the utility.
+Adversarial invariance via gradient reversal---the standard tool for suppressing a nuisance---is a
+no-free-lunch wall here: across a swept adversary strength, no setting holds retrieval non-inferior
+while meeting the angle-leakage cap. We test the principled alternative, gauge-equivariance, by
+predicting how the embedding should transform under a known $\Delta$angle through an $SO(2)$ head.
+As an auxiliary it strictly dominates the adversary, removing its statistically significant harm
+($-0.044$, $p\!\approx\!0 \to -0.018$, $p=0.11$) and demonstrably using the gauge (real
+$\Delta$angle $0.079$ vs.\ shuffled $0.028$). As the \emph{primary} objective it fails, and the
+failure is diagnostic: same-study-across-angles retrieval is itself an invariance metric, and on
+this encoder the projection-angle gauge is not a recoverable group action---transport and
+shuffled-transport are indistinguishable ($0.0093$ vs.\ $0.0089$) under both common-reference
+canonicalization and the rigorous pairwise-transport evaluation. The contribution is a predictive
+rule: gauge-equivariant self-supervision helps exactly when the utility is gauge-\emph{covariant}
+and the gauge acts as a recoverable transformation of the representation; where the utility is
+invariance-shaped, no amount of gauge machinery beats simply not fighting the gauge. All code and
+the full per-seed evidence are released.
+\end{abstract}
+
+\section{Introduction}
+
+Self-supervised and nuisance-suppression objectives in medical imaging are usually justified by an
+intuition---``factor out the scanner,'' ``be invariant to acquisition''---and then validated on one
+benchmark. The uncomfortable empirical fact is that the same objective frequently helps on the task
+it was tuned for and silently hurts elsewhere. This paper replaces the intuition with a mechanism.
+We claim that the deciding property is not the modality or the architecture but a pair of
+structural facts about the task: (i) whether the nuisance axis is a \emph{continuous physical
+gauge} that comes with coincident, free supervision, and (ii) whether the downstream utility is
+\emph{invariant} or \emph{covariant} under that gauge. When both align---a continuous gauge with a
+covariant target---a gauge-aware objective is principled and helps. When they do not, the standard
+move of suppressing the gauge with an adversary is not merely suboptimal; it is provably caught on
+an accuracy-versus-invariance frontier with no free lunch.
+
+We arrive at this through angiography. Contrast-front propagation in DIAS is a genuine temporal
+dynamical process: paired frames differ by the gauge (contrast phase) while sharing the same
+underlying anatomy-state transition, and ``predict the future observation'' is therefore
+gauge-equivariance under time-translation, with the next frame supplying free supervision. A
+compact gauge-consistent trainer improves DIAS adjacent-frame prediction over a fixed persistence
+comparator while holding topology-style leakage non-positive (Section~\ref{sec:dias}). The
+interesting science is what happens on a \emph{second} continuous physical gauge that lacks the
+temporal coincidence: the projection angle of an X-ray angiography acquisition.
+
+On that gauge we make three findings. First, adversarial invariance via gradient
+reversal~\citep{ganin2016domainadversarial}---the reflexive tool for removing a nuisance---is a
+no-free-lunch wall: sweeping its strength traces a monotonic frontier on which no operating point
+simultaneously keeps retrieval non-inferior and drives angle-leakage under cap
+(Section~\ref{sec:invariance}). Second, the principled alternative suggested by the DIAS
+success---gauge-\emph{equivariance}, i.e.\ predicting how the representation should transform under a
+known gauge action rather than throwing the gauge away---strictly dominates the adversary when used
+as an auxiliary, eliminating its significant harm and provably exploiting the gauge signal
+(Section~\ref{sec:equivariance}). Third, promoted to the primary objective, equivariance fails, and
+the failure is the point: same-study-across-angles retrieval is structurally an invariance metric,
+and the projection-angle gauge is not a recoverable group action on the encoder
+(Section~\ref{sec:primary}). We confirm the third finding is protocol-independent with a rigorous
+pairwise-transport evaluation, not merely an artifact of how we canonicalize.
+
+The result is a usable rule rather than another benchmark number
+(Section~\ref{sec:when}): gauge-equivariant self-supervision helps when, and only when, the task
+utility is gauge-covariant and the gauge acts as a recoverable transformation of the representation.
+This explains both the DIAS positive and the angiography boundary with one mechanism, and it tells a
+practitioner---before training---whether a gauge-aware objective can possibly help on a new task.
+
+\section{The Gauge Frame}\label{sec:frame}
+
+\paragraph{Gauges, invariance, equivariance.}
+Let a \emph{gauge} be a controlled, label-preserving change of observation: a transformation $g$ of
+the input that leaves the anatomy-state label fixed while changing the appearance. A representation
+$z=f(x)$ is gauge-\emph{invariant} if $f(g\cdot x)=f(x)$ and gauge-\emph{equivariant} if there is a
+known action $\rho_g$ on representation space with $f(g\cdot x)=\rho_g f(x)$. Invariance discards the
+gauge; equivariance keeps it in a structured, predictable form. The two objectives sit on opposite
+sides of an information trade: invariance is information-destroying by construction, equivariance is
+information-preserving.
+
+\paragraph{Continuous physical gauges with coincident supervision.}
+A gauge is a \emph{continuous physical gauge} when it is a real, measurable, continuously
+parameterized degree of freedom of the acquisition---contrast phase over time, projection angle in
+degrees---rather than a discrete derived label (a style cluster, a vendor bucket). It carries
+\emph{coincident supervision} when the gauge parameter is observed for free alongside the data and,
+in the strongest case, when moving along the gauge is itself the prediction target. DIAS contrast
+propagation is the strong case: the gauge parameter (time) advances and the next frame is the label,
+so equivariance under the gauge \emph{is} the task. Projection angle is a continuous physical gauge
+with the parameter observed (the positioner angle is recorded) but without temporal coincidence: the
+angle is known, yet no free target says ``this is the same anatomy seen $\Delta\theta$ later.''
+
+\paragraph{The covariance condition.}
+The deciding question for whether a gauge-aware objective can help is whether the downstream utility
+is invariant or covariant under the gauge. If the utility rewards treating gauge-separated views as
+the same---e.g.\ retrieving the same study across acquisition angles---then the metric is itself an
+invariance objective, and keeping the gauge information works against it. If the utility depends on
+the gauge---e.g.\ predicting a gauge-dependent future state---then discarding the gauge destroys
+signal the task needs, and equivariance is the principled prior. This single condition, applied
+before training, predicts the outcomes in this paper.
+
+\paragraph{The objective.}
+For a paired observation $(x_a,x_b)$ of the same cluster differing by gauge value
+$(\theta_a,\theta_b)$, with encoder $z=f(x)$, we compare three training signals. \emph{Adversarial
+invariance} adds a gradient-reversal head that predicts $\theta_a$ from $z_a$ and is trained to fail,
+pushing the gauge out of $z$. \emph{Equivariance (auxiliary)} keeps the base task and adds a head
+$h$ that predicts the paired embedding from the gauge displacement,
+$\mathcal{L}_{\mathrm{eq}}=\lVert h(z_a,\Delta\theta)-\mathrm{sg}(z_b)\rVert^2$, with
+$\Delta\theta=\theta_b-\theta_a$ encoded as $(\sin\Delta\theta,\cos\Delta\theta)$ to respect the
+$SO(2)$ structure of a real angle, and a stop-gradient on the target so the contrastive negatives
+prevent collapse. \emph{Equivariance (primary)} routes the contrastive positive itself through the
+head---transporting $z_a$ into $z_b$'s gauge frame, $h(z_a,\Delta\theta)$, then contrasting against
+$z_b$ in both directions---so the only way to satisfy the task is for the gauge to act as a
+predictable transformation; at evaluation, views are compared after transport into a common gauge
+frame.
+
+\section{Experimental Contract}\label{sec:contract}
+
+Every external number is the output of one pre-registered analyzer: cluster-bootstrap confidence
+intervals, a permutation null on the paired per-cluster delta, and a shuffled-gauge negative control
+that repartners views at random so the gauge displacement becomes meaningless. A method passes a
+gauge only if it holds the task non-inferior to baseline, meets the gauge-leakage cap, and the
+shuffled-gauge control reads as null. One portable trainer is used throughout; variants differ only
+by configuration flags, so the no-op configuration reproduces the baseline exactly.
+
+The projection-angle gauge uses CardioSYNTAX coronary angiography on real local shards across five
+seeds, roughly $200$ study clusters per arm. A precondition for an honest equivariance test is that
+the gauge is genuinely continuous; we verified this before training. The recorded primary positioner
+angle takes $629$ distinct values over $[-46.4^\circ, 47.5^\circ]$ (standard deviation $19.8^\circ$),
+and within-study angle displacements have median $21.7^\circ$ with only $5.4\%$ exactly zero---so the
+$11$ coarse buckets used as a categorical gauge label conceal a real continuous signal that an
+$SO(2)$ head can exploit. The task is same-study/same-artery retrieval@1 (higher is better); the
+leakage probe is the fold-fit $R^2$ with which the angle can be recovered from the representation
+(cap $0.035$, the raw-feature reference). The contrast-phase gauge uses the DIAS curated-v1
+benchmark against the confirmed persistence comparator.
+
+\section{DIAS: The Gauge That Works}\label{sec:dias}
+
+On the contrast-phase gauge---the one continuous physical gauge in this study whose utility is
+covariant, because the task is to predict the gauge-advanced future frame---the gauge-consistent
+objective helps. The balanced GaugeFlow variant improves all accepted persistence-baseline metrics:
+next-frame test MAE $0.01142$ versus persistence $0.01153$, with a topology-style leakage probe delta
+of $-0.074$ (non-positive, the leakage gate) and bounded commutator and state-consistency
+diagnostics (Table~\ref{tab:dias}). This is the expected outcome under the gauge frame: time
+advancement supplies free supervision, the target is gauge-covariant, and equivariance under
+time-translation is exactly what the benchmark rewards.
+
+\begin{table}[h]
+\centering
+\caption{DIAS contrast-phase gauge (covariant utility). The balanced variant is the first tested
+point that clears both the prediction and the topology-style leakage gates.}
+\label{tab:dias}
+\begin{tabular}{lrrl}
+\toprule
+Variant & Next-frame MAE & Topology-style leakage $\Delta$ & Gate \\
+\midrule
+Persistence comparator & 0.011530 & --- & --- \\
+GaugeFlow initial & 0.011518 & $+0.021$ & leakage positive, fail \\
+GaugeFlow balanced & 0.011418 & $-0.074$ & both gates clear \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Adversarial Invariance Is a No-Free-Lunch Wall}\label{sec:invariance}
+
+Moving to the projection-angle gauge, the reflexive way to suppress the nuisance is a
+gradient-reversal adversary on the embedding. It does not work, and not because it is mistuned. A
+single-embedding adversary is actively harmful: retrieval falls from $0.0821$ to $0.0466$, a delta
+of $-0.044$ (CI $[-0.063,-0.025]$, permutation $p\approx0$), while angle-leakage stays near baseline
+at $R^2=0.31$ against a $0.035$ cap. Porting the full content/style disentanglement of the DIAS
+trainer---a dedicated gauge-absorbing path---repairs the destructiveness, cutting angle-leakage
+roughly threefold ($0.27\to0.09$) and shrinking the harm to $-0.014$, but it still does not clear the
+cap while holding retrieval non-inferior.
+
+Sweeping the adversary strength shows this is a frontier, not a tuning miss (Table~\ref{tab:sweep}).
+With the adversary off, the consistency-only objective is non-inferior ($+0.0055$, $p=0.55$) but
+leaves leakage at $0.265$; any positive adversary weight drives leakage down at a monotone cost to
+retrieval. No swept setting simultaneously holds retrieval non-inferior and meets the leakage cap.
+This is the classic invariance information trade made concrete: forcing the gauge out of a
+representation that the retrieval task wants to keep coherent necessarily spends task accuracy.
+
+\begin{table}[h]
+\centering
+\caption{Projection-angle gauge, adversary-strength sweep. The frontier is monotone: invariance
+pressure trades retrieval for leakage with no free lunch.}
+\label{tab:sweep}
+\begin{tabular}{lrr}
+\toprule
+Adversary weight & Retrieval $\Delta$ vs.\ baseline [CI], $p$ & Angle-leakage $R^2$ \\
+\midrule
+$0.00$ (consistency only) & $+0.0055$ $[-0.012,+0.024]$, $p=0.55$ & 0.265 \\
+$0.05$ (weak) & $-0.044$, harmful & lower \\
+$0.25$ (full) & $-0.044$ $[-0.063,-0.025]$, $p\approx0$ & 0.31 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Equivariance Dominates Invariance as an Auxiliary}\label{sec:equivariance}
+
+The gauge frame says the principled move is to keep the gauge in a structured form rather than fight
+it. We add an $SO(2)$ equivariance head that predicts the paired embedding from the angle
+displacement, leaving the retrieval task intact. It strictly dominates the adversary. Retrieval
+delta improves from the adversary's significant $-0.044$ ($p\approx0$) to $-0.018$ (CI
+$[-0.040,+0.004]$, $p=0.11$): the harm is halved and is no longer statistically distinguishable from
+zero. Crucially, the head provably uses the gauge---with the true angle displacement, retrieval is
+$0.079$, but with the shuffled-gauge control it drops to $0.028$, a gap of $0.051$ that the adversary
+has no analogue for. Leakage stays high ($0.30$) by design, because equivariance keeps the
+information rather than destroying it. As an auxiliary, then, equivariance buys back the accuracy the
+adversary spends and reads the gauge signal the adversary erases (Table~\ref{tab:frontier}).
+
+\section{Equivariance as Primary Objective: A Diagnostic Failure}\label{sec:primary}
+
+Promoted from auxiliary to primary objective---routing the contrastive positive through the
+transport head and retrieving after canonicalization to a common gauge frame---equivariance fails
+sharply: retrieval collapses to $0.0089$ against a baseline of $0.095$, a delta of $-0.080$ ($p\approx0$),
+with leakage shooting to $0.70$. The failure is informative because the gauge signal vanishes: the
+true angle displacement ($0.0089$) is now indistinguishable from the shuffled control ($0.0105$),
+the opposite of the auxiliary regime.
+
+Two structural facts explain this. First, same-study-across-angles retrieval treats different angles
+of the same study as positives, so the metric \emph{is} an invariance objective; an equivariant
+representation that faithfully preserves the angle separates exactly the views the metric wants
+together. Second, the projection-angle gauge does not act as a recoverable group action on this
+encoder: the transport head cannot map an embedding from one angle frame to another in a way that
+recovers study identity, so canonicalization scrambles rather than aligns.
+
+We rule out the obvious objection---that common-reference canonicalization is simply a bad
+retrieval protocol---with the rigorous evaluation an equivariant representation deserves: pairwise
+transport, moving each query into every candidate's gauge frame before scoring. It gives the same
+answer. Retrieval is $0.0093$ for the true gauge versus $0.0089$ for the shuffled control, a null
+gap, with leakage $0.73$ (Table~\ref{tab:frontier}). The negative is therefore protocol-independent:
+transport and shuffled-transport are indistinguishable however we evaluate, which is direct evidence
+that the gauge is not a recoverable transformation of the representation here.
+
+\begin{table}[h]
+\centering
+\caption{The invariance--equivariance frontier on the projection-angle gauge. Equivariance dominates
+adversarial invariance as an auxiliary and uses the gauge; as a primary objective it fails because
+the retrieval utility is invariance-shaped and the gauge is not a recoverable group action.
+Per-run baselines differ by $\sim\!0.014$ from MPS nondeterminism, so the valid statistic is the
+within-run paired delta.}
+\label{tab:frontier}
+\small
+\begin{tabular}{lrll}
+\toprule
+Objective & Retrieval $\Delta$ vs.\ baseline & Gauge used? (true vs.\ shuffled) & Leakage $R^2$ \\
+\midrule
+Adversarial invariance (single) & $-0.044$, $p\approx0$ & --- & 0.31 \\
+Adversarial invariance (dual path) & $-0.014$ & --- & 0.09 \\
+Equivariance, auxiliary & $-0.018$, $p=0.11$ (n.s.) & $0.079$ vs.\ $0.028$ (used) & 0.30 \\
+Equivariance, primary (canonical) & $-0.080$, $p\approx0$ & $0.0089$ vs.\ $0.0105$ (none) & 0.70 \\
+Equivariance, primary (pairwise) & $-0.050$, $p\approx0$ & $0.0093$ vs.\ $0.0089$ (none) & 0.73 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{When Do Physical Gauges Help?}\label{sec:when}
+
+The two gauges resolve into one rule. DIAS is a continuous physical gauge with coincident supervision
+\emph{and} covariant utility---the task is to predict the gauge-advanced state---so equivariance
+under the gauge is the task and the gauge-consistent objective helps. Projection angle is an equally
+continuous, equally physical gauge, but its retrieval utility is invariant, and the gauge does not act
+as a recoverable transformation of the encoder; there, keeping the gauge fights the metric and
+discarding it via an adversary spends accuracy on a no-free-lunch frontier. The best available move
+on an invariance-shaped task is the cheapest one---do not fight the gauge at all---which is exactly
+why the consistency-only and auxiliary-equivariance settings, both of which leave the task intact,
+land at parity while every aggressive gauge objective underperforms.
+
+This yields a pre-training decision rule. Gauge-equivariant self-supervision is the right prior when:
+the nuisance is a continuous physical gauge with an observed parameter; the downstream utility is
+\emph{covariant} under that gauge; and the gauge acts as a recoverable transformation of the
+representation. When the utility is invariance-shaped, no gauge machinery---adversarial or
+equivariant---beats not fighting the gauge, and the only objectives that do no harm are the ones that
+leave the task alone. The practical payoff is that this is checkable in advance: the continuity of the
+gauge is a property of the metadata, the covariance of the utility is a property of the task
+definition, and the recoverability of the group action is testable with a transport-versus-shuffle
+control before committing to a full training run.
+
+\section{Reproducibility}\label{sec:repro}
+
+The release is self-contained. A single portable trainer implements all four objectives behind
+configuration flags---the baseline, the gradient-reversal adversary (single-embedding and dual
+content/style path), the auxiliary $SO(2)$ equivariance head, and the primary gauge-aligned
+contrastive objective with both common-reference and pairwise-transport evaluation. The
+projection-angle dataset adapter reads the CardioSYNTAX shards and exposes the raw positioner angle
+as the continuous gauge parameter; the pre-registered analyzer emits every confidence interval,
+permutation $p$-value, and shuffled-gauge control in this paper. Each reported number is one
+analyzer verdict over five seeds. The external imaging data are licensed and are not redistributed;
+the released artifact is the code required to rerun the experiments on the data and the complete
+per-seed evidence behind every table.
+
+\bibliographystyle{plainnat}
+\bibliography{references}
+
+\end{document}

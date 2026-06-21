@@ -1,0 +1,41 @@
+{
+  "idea_id": "coin-brats-seqgauge",
+  "run_id": "run-brats-seqgauge-baseline",
+  "method_label": "baseline_brats_segmentation_no_consistency",
+  "model_label": "baseline_brats",
+  "output_dir": "experiments_v2/brats_seq_gauge/runs/baseline",
+
+  "task": "segmentation",
+  "task_metric": "dice",
+  "cases_jsonl": "experiments_v2/brats_seq_gauge/data/cases.jsonl",
+  "local_root": "experiments_v2/brats_seq_gauge/data/frames",
+  "baseline_metrics_json": "experiments_v2/brats_seq_gauge/data/baseline_seg_metrics.json",
+  "cluster_key": "case_id",
+
+  "gauge_source": "real_pairs",
+  "gauge_pairs_jsonl": "experiments_v2/brats_seq_gauge/data/gauge_pairs.jsonl",
+  "gauge_levels": ["FLAIR", "T1w", "t1gd", "T2w"],
+  "gauge_shuffle": false,
+
+  "gaugeflow_enabled": false,
+  "gaugeflow_state_consistency_loss_weight": 0.0,
+  "gaugeflow_commutator_loss_weight": 0.0,
+  "gaugeflow_transformed_target_loss_weight": 0.0,
+  "gaugeflow_state_variance_loss_weight": 0.0,
+
+  "mask_loss_weight": 0.5,
+  "mask_dice_weight": 1.0,
+  "mask_pos_weight_cap": 30.0,
+
+  "base_channels": 16,
+  "image_size": 128,
+  "batch_size": 16,
+  "epochs": 24,
+  "learning_rate": 0.001,
+  "weight_decay": 1e-6,
+  "seed": 123,
+
+  "probe_steps": 250,
+  "probe_learning_rate": 0.05,
+  "sequence_id_separability_probe": true
+}

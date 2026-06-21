@@ -1,0 +1,49 @@
+{
+  "direction": "higher",
+  "arms": {
+    "baseline": {
+      "n_clusters": 206,
+      "mean": 0.09622486608945473,
+      "ci95": [
+        0.07620244222601145,
+        0.11782368932662748
+      ]
+    },
+    "gaugeflow": {
+      "n_clusters": 208,
+      "mean": 0.07906098975810515,
+      "ci95": [
+        0.06259735506880938,
+        0.09750150507211804
+      ]
+    },
+    "negctrl": {
+      "n_clusters": 202,
+      "mean": 0.02769119740198427,
+      "ci95": [
+        0.019568715770025048,
+        0.036764247811179804
+      ]
+    }
+  },
+  "gaugeflow_minus_baseline": {
+    "signed_delta": -0.017972958258672546,
+    "ci95": [
+      -0.04015726343762058,
+      0.004212044569187416
+    ],
+    "perm_p": 0.1138,
+    "n_paired_clusters": 175
+  },
+  "negctrl_minus_baseline": {
+    "signed_delta": -0.05535000173545065,
+    "n_paired_clusters": 170
+  },
+  "gaugeflow_leakage_mean": 0.29693312661288535,
+  "gate_checks": {
+    "delta_meets_min": false,
+    "leakage_under_cap": false,
+    "negctrl_is_null": false
+  },
+  "PASS": false
+}

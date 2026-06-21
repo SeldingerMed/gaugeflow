@@ -1,0 +1,8 @@
+{
+  "metric_direction": "higher",
+  "min_delta_vs_baseline": 0.0,
+  "require_delta_ci_excludes_0": true,
+  "max_leakage": 0.10,
+  "max_negctrl_abs_delta": 0.01,
+  "_notes": "metric=tumor Dice (higher better); leakage=adjusted sequence-ID separability of the learned state (chance for 4-way is 0.25; centered baseline reached 0.0, so <=0.10 means near-invariant). Gate = invariance AND retained task signal."
+}

@@ -1,0 +1,36 @@
+{
+  "direction": "higher",
+  "arms": {
+    "baseline": {
+      "n_clusters": 209,
+      "mean": 0.05029537846523492,
+      "ci95": [
+        0.03698021763811237,
+        0.0645967327351896
+      ]
+    },
+    "gaugeflow": {
+      "n_clusters": 195,
+      "mean": 0.05790679630760602,
+      "ci95": [
+        0.04287052245874784,
+        0.07525791923750765
+      ]
+    }
+  },
+  "gaugeflow_minus_baseline": {
+    "signed_delta": 0.005873933541616467,
+    "ci95": [
+      -0.011509590722624261,
+      0.022465409689113956
+    ],
+    "perm_p": 0.502,
+    "n_paired_clusters": 164
+  },
+  "gaugeflow_leakage_mean": 0.43221577913613335,
+  "gate_checks": {
+    "delta_meets_min": true,
+    "leakage_under_cap": false
+  },
+  "PASS": false
+}

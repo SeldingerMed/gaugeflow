@@ -1,0 +1,24 @@
+{
+  "idea_id": "coin-cardiosyntax-angleadv",
+  "run_id": "run-cardiosyntax-raw-baseline",
+  "method_label": "raw_features_no_gauge",
+  "model_label": "baseline_cardiosyntax_raw",
+  "output_dir": "experiments_v2/cardiosyntax_angle_adv/runs/baseline",
+
+  "task": "retrieval",
+  "task_metric": "same_study_same_artery_retrieval_top1",
+  "pairs_jsonl": "experiments_v2/cardiosyntax_angle_adv/data/pairs.jsonl",
+  "feature_source": "analysis-373cf226_balanced_extractor",
+  "cluster_key": "study_id",
+
+  "gauge_source": "none",
+  "gaugeflow_enabled": false,
+  "angle_adv_loss_weight": 0.0,
+  "orthogonality_loss_weight": 0.0,
+
+  "leakage_probe": "fold_fit_angle_r2",
+  "probe_steps": 250,
+  "probe_learning_rate": 0.05,
+  "seed": 123,
+  "_note": "raw extracted features only; this arm's leakage R2 (~0.035) and retrieval are the bar the gaugeflow arm must beat."
+}

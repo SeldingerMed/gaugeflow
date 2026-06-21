@@ -1,0 +1,8 @@
+{
+  "metric_direction": "higher",
+  "min_delta_vs_baseline": 0.0,
+  "require_delta_ci_excludes_0": false,
+  "max_leakage": 0.035,
+  "max_negctrl_abs_delta": 0.02,
+  "_notes": "metric=same-study/same-artery retrieval@1 (higher; baseline=raw features). The BINDING gate is max_leakage<=0.035 (fold-fit angle R2 at/below raw). require_delta_ci_excludes_0=false because the retrieval target is non-inferiority to raw (>=0), not strict superiority; the leakage cap is what must be cleared. negctrl: shuffled-angle gaugeflow must not beat raw retrieval."
+}

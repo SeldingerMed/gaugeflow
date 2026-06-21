@@ -1,0 +1,8 @@
+{
+  "metric_direction": "lower",
+  "min_delta_vs_baseline": 0.0,
+  "require_delta_ci_excludes_0": true,
+  "max_leakage": 0.10,
+  "max_negctrl_abs_delta": 0.01,
+  "_notes": "metric=ED->ES prediction MAE (lower better; analyze.py --direction lower makes an improvement a positive signed delta). leakage=vendor-ID separability of the learned state (>=2 vendors; <=0.10 means near-invariant). negctrl=shuffled-vendor gaugeflow must not improve MAE."
+}

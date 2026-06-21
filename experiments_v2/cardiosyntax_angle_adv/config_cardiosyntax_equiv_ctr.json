@@ -1,0 +1,32 @@
+{
+  "idea_id": "coin-cardiosyntax-angle-equiv-ctr",
+  "run_id": "run-cardiosyntax-angle-equivariance-contrastive",
+  "method_label": "gaugeflow_cardiosyntax_angle_equivariance",
+  "model_label": "gaugeflow_cardiosyntax",
+  "output_dir": "experiments_v2/cardiosyntax_angle_adv/runs_equiv_ctr/equiv",
+
+  "task": "retrieval",
+  "task_metric": "same_study_same_artery_retrieval_top1",
+  "cluster_key": "study_id",
+
+  "gauge_source": "real_pairs",
+  "gauge_level_key": "angle_label",
+  "gauge_shuffle": false,
+
+  "gaugeflow_enabled": true,
+  "gaugeflow_state_consistency_loss_weight": 0.0,
+  "angle_adv_loss_weight": 0.0,
+  "gauge_equiv_loss_weight": 0.0,
+  "gauge_equiv_contrastive": true,
+  "gauge_equiv_head_dim": 64,
+
+  "leakage_probe": "fold_fit_angle_r2",
+  "raw_feature_leakage_reference": 0.035,
+  "probe_steps": 250,
+  "probe_learning_rate": 0.05,
+
+  "epochs": 24,
+  "learning_rate": 0.001,
+  "weight_decay": 1e-6,
+  "seed": 123
+}
