@@ -14,7 +14,7 @@ Config keys:
   image_size                 : resize middle frame to this (default 128)
 """
 from __future__ import annotations
-import glob, io, json, os, zipfile
+import glob, hashlib, io, json, os, zipfile
 from pathlib import Path
 import numpy as np
 
@@ -43,7 +43,8 @@ def _resize(a, size):
 
 
 def _split_of(study_uid, split):
-    h = abs(hash(("cardio", study_uid))) % 10
+    digest = hashlib.sha256(repr(("cardio", study_uid)).encode("utf-8")).hexdigest()
+    h = int(digest[:8], 16) % 10
     want = "train" if h < 7 else "test"   # 70/30 study-level
     return want == split
 
