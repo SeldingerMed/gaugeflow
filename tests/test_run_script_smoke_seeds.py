@@ -80,7 +80,21 @@ def _write_fake_python(path: Path) -> None:
     path.chmod(0o755)
 
 
-def _smoke_trainer_seeds(script_dir: str, tmp_path: Path) -> list[int]:
+def _trainer_seeds_from_log(log_path: Path) -> list[int]:
+    seeds = []
+    for line in log_path.read_text().splitlines():
+        args = json.loads(line)
+        if not args or not args[0].endswith("gaugeflow_lite.py"):
+            continue
+        assert "--override" in args, args
+        override_index = args.index("--override")
+        seed_args = [arg for arg in args[override_index + 1:] if arg.startswith("seed=")]
+        assert len(seed_args) == 1, args
+        seeds.append(int(seed_args[0].split("=", 1)[1]))
+    return seeds
+
+
+def _trainer_seeds(script_dir: str, tmp_path: Path, *, smoke: bool) -> list[int]:
     fake_py = tmp_path / "fake_python.py"
     log_path = tmp_path / f"{script_dir}.jsonl"
     _write_fake_python(fake_py)
@@ -90,11 +104,9 @@ def _smoke_trainer_seeds(script_dir: str, tmp_path: Path) -> list[int]:
     shutil.copy(REPO_ROOT / "experiments_v2" / script_dir / "run.sh", workdir / "run.sh")
 
     env = os.environ.copy()
-    env.update({
-        "SMOKE": "1",
-        "PY": str(fake_py),
-        "FAKE_PY_LOG": str(log_path),
-    })
+    env.update({"PY": str(fake_py), "FAKE_PY_LOG": str(log_path)})
+    if smoke:
+        env["SMOKE"] = "1"
     subprocess.run(
         ["bash", "run.sh"],
         cwd=workdir,
@@ -105,20 +117,24 @@ def _smoke_trainer_seeds(script_dir: str, tmp_path: Path) -> list[int]:
         text=True,
     )
 
-    seeds = []
-    for line in log_path.read_text().splitlines():
-        args = json.loads(line)
-        if not args or not args[0].endswith("gaugeflow_lite.py"):
-            continue
-        override_index = args.index("--override")
-        seed_arg = next(arg for arg in args[override_index + 1:] if arg.startswith("seed="))
-        seeds.append(int(seed_arg.split("=", 1)[1]))
-    return seeds
+    return _trainer_seeds_from_log(log_path)
 
 
 def test_smoke_defaults_to_two_seeds_for_brats_run_script(tmp_path: Path) -> None:
-    assert _smoke_trainer_seeds("brats_seq_gauge", tmp_path) == [0, 0, 0, 1, 1, 1]
+    assert _trainer_seeds("brats_seq_gauge", tmp_path, smoke=True) == [0, 0, 0, 1, 1, 1]
 
 
 def test_smoke_defaults_to_two_seeds_for_cardiosyntax_run_script(tmp_path: Path) -> None:
-    assert _smoke_trainer_seeds("cardiosyntax_angle_adv", tmp_path) == [0, 0, 0, 1, 1, 1]
+    assert _trainer_seeds("cardiosyntax_angle_adv", tmp_path, smoke=True) == [0, 0, 0, 1, 1, 1]
+
+
+def test_default_mode_uses_five_seeds_for_brats_run_script(tmp_path: Path) -> None:
+    assert _trainer_seeds("brats_seq_gauge", tmp_path, smoke=False) == [
+        seed for seed in range(5) for _ in range(3)
+    ]
+
+
+def test_default_mode_uses_five_seeds_for_cardiosyntax_run_script(tmp_path: Path) -> None:
+    assert _trainer_seeds("cardiosyntax_angle_adv", tmp_path, smoke=False) == [
+        seed for seed in range(5) for _ in range(3)
+    ]
