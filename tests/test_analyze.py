@@ -75,10 +75,14 @@ def test_analyze_lower_direction_treats_smaller_metrics_as_better():
 
     result = analyze(rows, gates, direction="lower", B=200, seed=123)
 
+    effect = result["gaugeflow_minus_baseline"]
+
     assert result["PASS"] is True
     assert result["direction"] == "lower"
-    assert result["gaugeflow_minus_baseline"]["signed_delta"] == pytest.approx(0.08)
-    assert result["gaugeflow_minus_baseline"]["ci95"][0] > 0
+    assert effect["raw_delta"] == pytest.approx(-0.08)
+    assert effect["raw_ci95"][1] < 0
+    assert effect["signed_delta"] == pytest.approx(0.08)
+    assert effect["ci95"][0] > 0
 
 
 def test_analyze_cli_writes_json_and_sets_success_exit_code(tmp_path):
