@@ -87,11 +87,19 @@ def analyze(rows, gates, direction="higher", B=5000, seed=0):
 
     g, b = _cluster_means(rows, "gaugeflow"), _cluster_means(rows, "baseline")
     common = sorted(set(g) & set(b))
-    deltas = [(g[c] - b[c]) * sign for c in common]
+    raw_deltas = [g[c] - b[c] for c in common]
+    raw_dmean, raw_dci = _boot_ci(raw_deltas, B, rng)
+    deltas = [delta * sign for delta in raw_deltas]
     dmean, dci = _boot_ci(deltas, B, rng)
     _, pval = _perm_null(g, b, B, rng)
-    out["gaugeflow_minus_baseline"] = {"signed_delta": dmean, "ci95": dci, "perm_p": pval,
-                                       "n_paired_clusters": len(common)}
+    out["gaugeflow_minus_baseline"] = {
+        "raw_delta": raw_dmean,
+        "raw_ci95": raw_dci,
+        "signed_delta": dmean,
+        "ci95": dci,
+        "perm_p": pval,
+        "n_paired_clusters": len(common),
+    }
 
     # negative control: shuffled-gauge arm should not beat baseline
     nc = _cluster_means(rows, "negctrl")
