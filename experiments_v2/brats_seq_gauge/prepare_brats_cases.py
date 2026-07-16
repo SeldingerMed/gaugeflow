@@ -18,23 +18,26 @@ segmentation target is non-trivial and identical across the four co-registered
 sequences. This is the real gauge: same anatomy/state, different observation channel.
 """
 from __future__ import annotations
-import argparse, importlib.util, json, tempfile
+import argparse, importlib.util, json, os, tempfile
 from pathlib import Path
 import numpy as np
 
 SEQUENCES = ["FLAIR", "T1w", "t1gd", "T2w"]  # MSD Task01 channel order
 
 # DeepScientist quest-012 streaming loader (HTTP Range tar reader).
-SCHEMA_PATH = Path(
-    "${DATA_ROOT:-/path/to/data}"
-    "experiments/main/run-coin-mpmri-msd-task01-stream-schema-v2/stream_msd_task01_schema.py"
+DEFAULT_SCHEMA_PATH = (
+    Path(os.environ.get("DATA_ROOT", "/path/to/data"))
+    / "experiments"
+    / "main"
+    / "run-coin-mpmri-msd-task01-stream-schema-v2"
+    / "stream_msd_task01_schema.py"
 )
 
 
-def load_schema():
-    spec = importlib.util.spec_from_file_location("msd_task01_schema", SCHEMA_PATH)
+def load_schema(schema_path: Path = DEFAULT_SCHEMA_PATH):
+    spec = importlib.util.spec_from_file_location("msd_task01_schema", schema_path)
     if spec is None or spec.loader is None:
-        raise RuntimeError(f"cannot load schema module from {SCHEMA_PATH}")
+        raise RuntimeError(f"cannot load schema module from {schema_path}")
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
     # S3 resets connections during the long sequential header scan; wrap the
@@ -53,6 +56,20 @@ def load_schema():
                 time.sleep(1.5 * (attempt + 1))
     mod.http_range = retrying
     return mod
+
+
+def parse_args(argv: list[str] | None = None):
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--case-count", type=int, default=48)
+    ap.add_argument("--max-image-bytes", type=int, default=160 * 1024 * 1024)
+    ap.add_argument("--out", type=Path, default=Path(__file__).resolve().parent / "data")
+    ap.add_argument(
+        "--schema-path",
+        type=Path,
+        default=DEFAULT_SCHEMA_PATH,
+        help="Path to stream_msd_task01_schema.py (default: $DATA_ROOT/experiments/main/run-coin-mpmri-msd-task01-stream-schema-v2/stream_msd_task01_schema.py, or /path/to/data when DATA_ROOT is unset)",
+    )
+    return ap.parse_args(argv)
 
 
 def select_pairs(schema, case_count: int, max_image_bytes: int):
@@ -110,14 +127,10 @@ def split_for(i: int) -> str:
 
 
 def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--case-count", type=int, default=48)
-    ap.add_argument("--max-image-bytes", type=int, default=160 * 1024 * 1024)
-    ap.add_argument("--out", type=Path, default=Path(__file__).resolve().parent / "data")
-    a = ap.parse_args()
+    a = parse_args()
 
     import nibabel as nib
-    schema = load_schema()
+    schema = load_schema(a.schema_path)
     frames = a.out / "frames"
     frames.mkdir(parents=True, exist_ok=True)
     pairs, url = select_pairs(schema, a.case_count, a.max_image_bytes)

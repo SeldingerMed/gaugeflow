@@ -7,8 +7,13 @@ set -euo pipefail
 cd "$(dirname "$0")"; HERE="$(pwd)"
 PY="${PY:-python}"
 TRAINER="$HERE/../trainer/gaugeflow_lite.py"; DS="$HERE/dataset.py"
-SMOKE_FLAG=""; SEEDS="${SEEDS:-0 1 2 3 4}"
-if [ "${SMOKE:-0}" = "1" ]; then SMOKE_FLAG="--smoke"; SEEDS="${SEEDS:-0 1}"; fi
+SMOKE_FLAG=""
+if [ "${SMOKE:-0}" = "1" ]; then
+  SMOKE_FLAG="--smoke"
+  SEEDS="${SEEDS:-0 1}"
+else
+  SEEDS="${SEEDS:-0 1 2 3 4}"
+fi
 RESULTS="$HERE/results.jsonl"; : > "$RESULTS"
 
 emit () {
