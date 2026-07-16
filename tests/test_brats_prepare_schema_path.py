@@ -53,7 +53,14 @@ def test_default_schema_path_uses_fallback_without_data_root(monkeypatch):
 def test_parser_allows_schema_path_override(monkeypatch, tmp_path):
     module = load_prepare_module(monkeypatch)
     schema_path = tmp_path / "custom_schema.py"
+    schema_path.write_text(
+        "MARKER = 'custom-schema'\n"
+        "def http_range(url, start, end, timeout=120):\n"
+        "    return b''\n"
+    )
 
     args = module.parse_args(["--schema-path", str(schema_path)])
+    schema = module.load_schema(args.schema_path)
 
     assert args.schema_path == schema_path
+    assert schema.MARKER == "custom-schema"
