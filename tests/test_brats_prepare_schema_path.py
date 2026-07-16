@@ -41,9 +41,12 @@ def test_default_schema_path_expands_data_root_env(monkeypatch, tmp_path):
 def test_default_schema_path_uses_fallback_without_data_root(monkeypatch):
     module = load_prepare_module(monkeypatch)
 
-    assert module.DEFAULT_SCHEMA_PATH == Path(
-        "/path/to/data/experiments/main/"
-        "run-coin-mpmri-msd-task01-stream-schema-v2/stream_msd_task01_schema.py"
+    assert module.DEFAULT_SCHEMA_PATH == (
+        Path("/path/to/data")
+        / "experiments"
+        / "main"
+        / "run-coin-mpmri-msd-task01-stream-schema-v2"
+        / "stream_msd_task01_schema.py"
     )
 
 
