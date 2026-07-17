@@ -43,12 +43,12 @@ if [ -e "$DATA_DIR" ] && [ ! -d "$DATA_DIR" ]; then
   exit 1
 fi
 
-if [ -d "$DATA_DIR" ] && { [ ! -r "$DATA_DIR" ] || [ ! -x "$DATA_DIR" ]; }; then
+if [ -d "$DATA_DIR" ] && { [ ! -r "$DATA_DIR" ] || [ ! -w "$DATA_DIR" ] || [ ! -x "$DATA_DIR" ]; }; then
   echo "BraTS smoke data directory is not accessible: $(pwd)/$DATA_DIR" >&2
   exit 1
 fi
 
-if [ -d "$DATA_DIR" ] && [ -n "$(find "$DATA_DIR" -mindepth 1 -maxdepth 1 -print -quit)" ]; then
+if [ -d "$DATA_DIR" ] && [ -n "$(ls -A "$DATA_DIR")" ]; then
   echo "Warning: reusing nonempty BraTS smoke data directory: $(pwd)/$DATA_DIR" >&2
 fi
 
