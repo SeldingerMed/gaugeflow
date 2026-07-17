@@ -43,7 +43,12 @@ if [ -e "$DATA_DIR" ] && [ ! -d "$DATA_DIR" ]; then
   exit 1
 fi
 
-if [ -d "$DATA_DIR" ] && [ -n "$(find "$DATA_DIR" -mindepth 1 -maxdepth 1 -print -quit 2>/dev/null)" ]; then
+if [ -d "$DATA_DIR" ] && { [ ! -r "$DATA_DIR" ] || [ ! -x "$DATA_DIR" ]; }; then
+  echo "BraTS smoke data directory is not accessible: $(pwd)/$DATA_DIR" >&2
+  exit 1
+fi
+
+if [ -d "$DATA_DIR" ] && [ -n "$(find "$DATA_DIR" -mindepth 1 -maxdepth 1 -print -quit)" ]; then
   echo "Warning: reusing nonempty BraTS smoke data directory: $(pwd)/$DATA_DIR" >&2
 fi
 
@@ -58,4 +63,7 @@ if ! "$PY" make_smoke_fixture.py --out "$DATA_DIR"; then
 fi
 
 # SEEDS is a list of seed IDs; "0" runs exactly one seed.
-SMOKE=1 SEEDS="${SEEDS:-0}" PY="$PY" ./run.sh
+if ! SMOKE=1 SEEDS="${SEEDS:-0}" PY="$PY" ./run.sh; then
+  echo "BraTS smoke pipeline failed." >&2
+  exit 1
+fi
