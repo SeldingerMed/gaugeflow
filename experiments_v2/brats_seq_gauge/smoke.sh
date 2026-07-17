@@ -32,5 +32,10 @@ if [ ! -f make_smoke_fixture.py ]; then
   exit 1
 fi
 
+if [ ! -x run.sh ]; then
+  echo "BraTS smoke runner not found or not executable: $(pwd)/run.sh" >&2
+  exit 1
+fi
+
 "$PY" make_smoke_fixture.py --out data
 SMOKE=1 SEEDS="${SEEDS:-0}" PY="$PY" ./run.sh
