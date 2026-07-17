@@ -27,8 +27,8 @@ if [ "${#missing_dependencies[@]}" -gt 0 ]; then
   exit 1
 fi
 
-if [ ! -f make_smoke_fixture.py ]; then
-  echo "BraTS smoke fixture generator not found: $(pwd)/make_smoke_fixture.py" >&2
+if [ ! -r make_smoke_fixture.py ]; then
+  echo "BraTS smoke fixture generator not found or not readable: $(pwd)/make_smoke_fixture.py" >&2
   exit 1
 fi
 
@@ -37,5 +37,13 @@ if [ ! -x run.sh ]; then
   exit 1
 fi
 
-"$PY" make_smoke_fixture.py --out data
+if ! mkdir -p data; then
+  echo "Unable to create BraTS smoke data directory: $(pwd)/data" >&2
+  exit 1
+fi
+
+if ! "$PY" make_smoke_fixture.py --out data; then
+  echo "Failed to create the BraTS smoke fixture in $(pwd)/data." >&2
+  exit 1
+fi
 SMOKE=1 SEEDS="${SEEDS:-0}" PY="$PY" ./run.sh
