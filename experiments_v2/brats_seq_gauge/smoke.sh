@@ -37,13 +37,25 @@ if [ ! -x run.sh ]; then
   exit 1
 fi
 
-if ! mkdir -p data; then
-  echo "Unable to create BraTS smoke data directory: $(pwd)/data" >&2
+DATA_DIR="data"
+if [ -e "$DATA_DIR" ] && [ ! -d "$DATA_DIR" ]; then
+  echo "BraTS smoke data path exists but is not a directory: $(pwd)/$DATA_DIR" >&2
   exit 1
 fi
 
-if ! "$PY" make_smoke_fixture.py --out data; then
-  echo "Failed to create the BraTS smoke fixture in $(pwd)/data." >&2
+if [ -d "$DATA_DIR" ] && [ -n "$(find "$DATA_DIR" -mindepth 1 -maxdepth 1 -print -quit 2>/dev/null)" ]; then
+  echo "Warning: reusing nonempty BraTS smoke data directory: $(pwd)/$DATA_DIR" >&2
+fi
+
+if ! mkdir -p "$DATA_DIR"; then
+  echo "Unable to create BraTS smoke data directory: $(pwd)/$DATA_DIR" >&2
   exit 1
 fi
+
+if ! "$PY" make_smoke_fixture.py --out "$DATA_DIR"; then
+  echo "Failed to create the BraTS smoke fixture in $(pwd)/$DATA_DIR." >&2
+  exit 1
+fi
+
+# SEEDS is a list of seed IDs; "0" runs exactly one seed.
 SMOKE=1 SEEDS="${SEEDS:-0}" PY="$PY" ./run.sh
