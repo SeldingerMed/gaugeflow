@@ -67,6 +67,16 @@ cd experiments_v2/cardiosyntax_angle_adv
 
 Each script writes per-seed `per_study_metrics.jsonl` and a `verdict_*.json` from the analyzer. The four `verdict_*.json` in `cardiosyntax_angle_adv/` are the numbers in the table above.
 
+To exercise the BraTS wiring without licensed data, use the synthetic smoke runner:
+
+```bash
+experiments_v2/brats_seq_gauge/smoke.sh
+```
+
+It checks for NumPy, Pillow, and PyTorch, creates `data/cases.jsonl` plus its PNG fixture,
+then runs the baseline, GaugeFlow, and shuffled-gauge arms with one seed. Set `PY` to
+choose another Python 3 environment or `SEEDS` to exercise additional seeds.
+
 The key flags on `gaugeflow_lite.py` (config JSON):
 
 | flag | objective |

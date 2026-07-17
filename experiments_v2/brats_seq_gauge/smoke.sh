@@ -1,0 +1,69 @@
+#!/usr/bin/env bash
+# Build a synthetic BraTS-shaped fixture and run a one-seed pipeline smoke test.
+set -euo pipefail
+
+cd "$(dirname "$0")"
+PY="${PY:-python3}"
+
+if ! command -v "$PY" >/dev/null 2>&1; then
+  echo "Python interpreter not found: $PY" >&2
+  echo "Set PY to an available Python 3 interpreter." >&2
+  exit 1
+fi
+
+missing_dependencies=()
+if ! "$PY" -c "import numpy" >/dev/null 2>&1; then
+  missing_dependencies+=("NumPy")
+fi
+if ! "$PY" -c "import PIL" >/dev/null 2>&1; then
+  missing_dependencies+=("Pillow")
+fi
+if ! "$PY" -c "import torch" >/dev/null 2>&1; then
+  missing_dependencies+=("PyTorch")
+fi
+if [ "${#missing_dependencies[@]}" -gt 0 ]; then
+  echo "BraTS smoke dependencies missing for $PY: ${missing_dependencies[*]}." >&2
+  echo "Install NumPy, Pillow, and PyTorch, or set PY to an environment that provides them." >&2
+  exit 1
+fi
+
+if [ ! -r make_smoke_fixture.py ]; then
+  echo "BraTS smoke fixture generator not found or not readable: $(pwd)/make_smoke_fixture.py" >&2
+  exit 1
+fi
+
+if [ ! -x run.sh ]; then
+  echo "BraTS smoke runner not found or not executable: $(pwd)/run.sh" >&2
+  exit 1
+fi
+
+DATA_DIR="data"
+if [ -e "$DATA_DIR" ] && [ ! -d "$DATA_DIR" ]; then
+  echo "BraTS smoke data path exists but is not a directory: $(pwd)/$DATA_DIR" >&2
+  exit 1
+fi
+
+if [ -d "$DATA_DIR" ] && { [ ! -r "$DATA_DIR" ] || [ ! -w "$DATA_DIR" ] || [ ! -x "$DATA_DIR" ]; }; then
+  echo "BraTS smoke data directory is not accessible: $(pwd)/$DATA_DIR" >&2
+  exit 1
+fi
+
+if [ -d "$DATA_DIR" ] && [ -n "$(ls -A "$DATA_DIR")" ]; then
+  echo "Warning: reusing nonempty BraTS smoke data directory: $(pwd)/$DATA_DIR" >&2
+fi
+
+if ! mkdir -p "$DATA_DIR"; then
+  echo "Unable to create BraTS smoke data directory: $(pwd)/$DATA_DIR" >&2
+  exit 1
+fi
+
+if ! "$PY" make_smoke_fixture.py --out "$DATA_DIR"; then
+  echo "Failed to create the BraTS smoke fixture in $(pwd)/$DATA_DIR." >&2
+  exit 1
+fi
+
+# SEEDS is a list of seed IDs; "0" runs exactly one seed.
+if ! SMOKE=1 SEEDS="${SEEDS:-0}" PY="$PY" ./run.sh; then
+  echo "BraTS smoke pipeline failed." >&2
+  exit 1
+fi

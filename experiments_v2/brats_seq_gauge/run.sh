@@ -5,7 +5,7 @@
 #   ./run.sh           -> full run (needs real BraTS via prepare_brats_cases.py first)
 set -euo pipefail
 cd "$(dirname "$0")"; HERE="$(pwd)"
-PY="${PY:-python}"
+PY="${PY:-python3}"
 TRAINER="$HERE/../trainer/gaugeflow_lite.py"; DS="$HERE/dataset.py"
 SMOKE_FLAG=""
 if [ "${SMOKE:-0}" = "1" ]; then
